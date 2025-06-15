@@ -1,6 +1,6 @@
 from typing import Any, Dict, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # Generic type for algorithm parameters
 TParams = TypeVar("TParams", bound="AlgorithmParams")
@@ -11,9 +11,7 @@ TResult = TypeVar("TResult", bound="AlgorithmResult")
 
 class AlgorithmParams(BaseModel):
     """Base model for algorithm input parameters."""
-
-    class Config:
-        extra = "forbid"  # Forbid any extra fields to ensure strict validation
+    model_config = ConfigDict(extra="forbid")
 
 
 class AlgorithmResult(BaseModel):

@@ -1,36 +1,50 @@
-.PHONY: help install test lint format build clean dev-install
+.PHONY: help install test lint format build clean dev-install venv venv-clean
 .DEFAULT_GOAL := help
+
+# Python virtual environment settings
+VENV_NAME ?= .venv
+PYTHON ?= python3
+PIP = $(VENV_NAME)/bin/pip
+PYTHON_VENV = $(VENV_NAME)/bin/python
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install package
-	pip install -e .
+venv: ## Create virtual environment
+	$(PYTHON) -m venv $(VENV_NAME)
+	$(PIP) install --upgrade pip setuptools wheel
+	@echo "Virtual environment created. Activate with: source $(VENV_NAME)/bin/activate"
 
-dev-install: ## Install with development dependencies
-	pip install -e ".[dev,test]"
+venv-clean: ## Remove virtual environment
+	rm -rf $(VENV_NAME)
+
+install: venv ## Install package in virtual environment
+	$(PIP) install -e .
+
+dev-install: venv ## Install with development dependencies in virtual environment
+	$(PIP) install -e ".[dev,test]"
 
 test: ## Run tests
-	pytest
+	@if [ -f "$(PYTHON_VENV)" ]; then $(PYTHON_VENV) -m pytest tests/; else pytest tests/; fi
 
 test-cov: ## Run tests with coverage
-	pytest --cov=quantum_interfaces --cov-report=html
+	@if [ -f "$(PYTHON_VENV)" ]; then $(PYTHON_VENV) -m pytest --cov=quantum_interfaces --cov-report=html tests/; else pytest --cov=quantum_interfaces --cov-report=html tests/; fi
 
 lint: ## Run linter
-	ruff check src tests
-	mypy src
+	@if [ -f "$(PYTHON_VENV)" ]; then $(PYTHON_VENV) -m ruff check src tests && $(PYTHON_VENV) -m mypy src; else ruff check src tests && mypy src; fi
 
 format: ## Format code
-	black src tests
-	ruff check --fix src tests
+	@if [ -f "$(PYTHON_VENV)" ]; then $(PYTHON_VENV) -m black src tests && $(PYTHON_VENV) -m ruff check --fix src tests; else black src tests && ruff check --fix src tests; fi
 
 build: ## Build package
-	python -m build
+	@if [ -f "$(PYTHON_VENV)" ]; then $(PYTHON_VENV) -m build; else python -m build; fi
 
 clean: ## Clean build artifacts
 	rm -rf build/ dist/ *.egg-info/ htmlcov/ .coverage .pytest_cache/
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
+
+clean-all: clean venv-clean ## Clean everything including virtual environment
 
 git-setup: ## Setup git repository
 	git init
@@ -42,4 +56,10 @@ git-setup: ## Setup git repository
 
 release: ## Create release tag
 	git tag v$(shell python -c "import sys; sys.path.insert(0, 'src'); from quantum_interfaces import __version__; print(__version__)")
-	@echo "Run: git push --tags" 
+	@echo "Run: git push --tags"
+
+hatch-test: ## Run tests using hatch (if available)
+	@if command -v hatch >/dev/null 2>&1; then hatch run test; else echo "Hatch not available, use 'make test'"; fi
+
+hatch-lint: ## Run linter using hatch (if available)
+	@if command -v hatch >/dev/null 2>&1; then hatch run lint; else echo "Hatch not available, use 'make lint'"; fi 
