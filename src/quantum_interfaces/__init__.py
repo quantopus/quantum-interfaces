@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from .base_algorithm import BaseAlgorithm
 from .exceptions import AlgorithmError, ExecutionError, ValidationError
